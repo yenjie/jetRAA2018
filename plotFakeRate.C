@@ -39,12 +39,21 @@ class ForestTrees
    }
 };
 
-TH1D *myHistogram(const char *hname){
-
-  const int nbins = 6;
-  double bin[nbins+1] = {100,120,140,160,200,300,1000};
-  TH1D *h = new TH1D(hname,"",nbins,bin);
+TH1D *myHistogram(const char *hname, int centBin=1)
+{
+  TH1D *h;
+  
+  if (centBin==3 || centBin==4) {
+     const int nbins = 6;
+     double bin[nbins+1] = {160,180,200,250,300,400,1000};
+     h = new TH1D(hname,"",nbins,bin);
+  } else {
+     const int nbins = 7;
+     double bin[nbins+1] = {160,180,200,250,300,400,500,1000};
+     h = new TH1D(hname,"",nbins,bin);
+  }
   h->Sumw2();
+
   return h;
 }
 
@@ -109,10 +118,13 @@ void plotFakeRate(int cone=10, int centBin=1)
    TCut looseJetID= "(jtPfNHF<0.99 && jtPfNEF<0.99 && (jtPfCHM+jtPfNHM+jtPfCEM+jtPfNEM+jtPfMUM)>1) && ((abs(jteta)<=2.4 && jtPfCHF>0&& jtPfCHM>0 && jtPfCEF<0.99) || abs(jteta)>2.4) && abs(jteta)<=2.7";
    TH1D *hFake = myHistogram("hFake");
    TH1D *hGen = myHistogram("hGen");
-   fMB.Jet->Project("hFake","jtpt",centWeight*("abs(jteta)<2"));
-   fMB.Jet->Project("hGen","genpt",centWeight*("abs(geneta)<2"));
-
-   hFake->Add(hGen,-1);
+   fMB.Jet->Project("hFake","jtpt",centWeight*(looseJetID&&"abs(jteta)<2"));
+   fMB.Jet->Project("hGen","genpt",centWeight*(looseJetID&&"abs(geneta)<2"));
+   
+   // don't want to double count the statistical error from GenJet subtraction
+   for (int i=1;i<=hFake->GetNbinsX();i++){
+      hFake->SetBinContent(i,hFake->GetBinContent(i)-hGen->GetBinContent(i));
+   }
    hFake->Scale(1./(fMB.Jet->GetEntries(centWeight)));
    
    
