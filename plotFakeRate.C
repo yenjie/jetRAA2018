@@ -3,6 +3,7 @@
 #include <TTree.h>
 #include <TCanvas.h>
 #include <TCut.h>
+#include <TLatex.h>
 #include "ncollFunction.h"
 
 // for PYTHIA+HYDJET, use the following pthat weights: PTHATWEIGHTS=1., 0.00555693, 0.000213668, .0000107919
@@ -149,23 +150,31 @@ void plotFakeRate(int cone=10, int centBin=1)
    hFake->Draw("same");
  
    TCanvas *c2 = new TCanvas("c2","Fake Rate",600,600);
+   c2->SetLogx();
    TH1D *hFakeRate = (TH1D*)hFake->Clone("hFakeRate");
    TH1D *hAll = (TH1D*)h30->Clone("hAll");
    hAll->Add(hFake);
    hFakeRate->Divide(hAll);  
 
+
    for (int i=1;i<=hFakeRate->GetNbinsX();i++){
-      hFakeRate->SetBinContent(i,hFakeRate->GetBinContent(i)+1e-10);
+      hFakeRate->SetBinContent(i,hFakeRate->GetBinContent(i));
       if (hFakeRate->GetBinContent(i)==0) {
          hFakeRate->SetBinError(i,0);}
 	 
    }
 
-   hFakeRate->SetAxisRange(0,0.5,"Y");
+   hFakeRate->SetAxisRange(-0.01,0.5,"Y");
    hFakeRate->Draw();
+   hFakeRate->Draw("hist same");
    hFakeRate->SetXTitle(Form("R=%.1f Jet p_{T} (GeV/c)",cone*0.1));
    hFakeRate->SetYTitle("Fake Rate");
    hFakeRate->SetTitle(Form("%d-%d%%",centL,centH));
+
+   TLatex* latex4 = new TLatex(180,-0.048,"2#times 10^{2}");
+   latex4->SetTextFont(42);
+   latex4->SetTextSize(0.045);
+   latex4->Draw();
    c2->SaveAs(Form("results/fakeRate_%d_bin%d.pdf",cone,centBin));
    c2->SaveAs(Form("results/fakeRate_%d_bin%d.root",cone,centBin));
 }
