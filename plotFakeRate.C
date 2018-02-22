@@ -29,13 +29,19 @@ class ForestTrees
    public:
    TFile *inf;
    TTree *Jet;
+   TTree *match;
    TTree *Evt;
-   ForestTrees(const char *infname, int cone){
+   ForestTrees(const char *infname, int cone, bool isMB=0){
       inf = new TFile(infname);
       char *treeName = Form("akCs%dPU3PFFlowJetAnalyzer/t",cone);
       Jet = (TTree*) inf->Get(treeName);
       Evt = (TTree*) inf->Get("hiEvtAnalyzer/HiTree");
       Jet->AddFriend(Evt);
+      if (isMB==1) {
+          TFile *inf2 = new TFile(Form("/data/yjlee/jetRAA2018/outfile_%d.root",cone));
+	  TTree *matchingTree = (TTree*) inf2->Get(Form("t%d",cone));
+	  Jet->AddFriend(matchingTree);
+      }
    }
 };
 
@@ -59,7 +65,7 @@ TH1D *myHistogram(const char *hname, int centBin=1)
 
 void plotFakeRate(int cone=10, int centBin=1)
 {
-   ForestTrees fMB("LargeConeRAA_20180218/HiForestAOD_PbPb_MB_20180218_ExcludeTop4_ExcludeToFrac_Frac0p7_Full_5Sigma_MERGED.root",cone);
+   ForestTrees fMB("LargeConeRAA_20180218/HiForestAOD_PbPb_MB_20180218_ExcludeTop4_ExcludeToFrac_Frac0p7_Full_5Sigma_MERGED.root",cone,1);
    ForestTrees f30("LargeConeRAA_20180218/HiForestAOD_PbPb_MCDijet30_20180218_ExcludeTop4_ExcludeToFrac_Frac0p7_Full_5Sigma_MERGED.root",cone);
    ForestTrees f80("LargeConeRAA_20180218/HiForestAOD_PbPb_MCDijet80_20180218_ExcludeTop4_ExcludeToFrac_Frac0p7_Full_5Sigma_MERGED.root",cone);
    ForestTrees f170("LargeConeRAA_20180218/HiForestAOD_PbPb_MCDijet170_20180218_ExcludeTop4_ExcludeToFrac_Frac0p7_Full_5Sigma_MERGED.root",cone);
@@ -118,14 +124,19 @@ void plotFakeRate(int cone=10, int centBin=1)
    TCut looseJetID= "(jtPfNHF<0.99 && jtPfNEF<0.99 && (jtPfCHM+jtPfNHM+jtPfCEM+jtPfNEM+jtPfMUM)>1) && ((abs(jteta)<=2.4 && jtPfCHF>0&& jtPfCHM>0 && jtPfCEF<0.99) || abs(jteta)>2.4) && abs(jteta)<=2.7";
    TH1D *hFake = myHistogram("hFake");
    TH1D *hGen = myHistogram("hGen");
-   fMB.Jet->Project("hFake","jtpt",centWeight*(looseJetID&&"abs(jteta)<2"));
-   fMB.Jet->Project("hGen","genpt",centWeight*(looseJetID&&"abs(geneta)<2"));
+   fMB.Jet->Project("hFake","jtpt",centWeight*(looseJetID&&"jtgenref==-1&&abs(jteta)<2"));
+   //fMB.Jet->Project("hGen","genpt",centWeight*(looseJetID&&"abs(geneta)<2"));
    
+   /*
    // don't want to double count the statistical error from GenJet subtraction
+   
    for (int i=1;i<=hFake->GetNbinsX();i++){
       hFake->SetBinContent(i,hFake->GetBinContent(i)-hGen->GetBinContent(i));
    }
+   */
+
    hFake->Scale(1./(fMB.Jet->GetEntries(centWeight)));
+
    
    
    h30->Draw();
@@ -142,9 +153,30 @@ void plotFakeRate(int cone=10, int centBin=1)
    TH1D *hAll = (TH1D*)h30->Clone("hAll");
    hAll->Add(hFake);
    hFakeRate->Divide(hAll);  
-   hFakeRate->SetAxisRange(0,1,"Y");
+
+   for (int i=1;i<=hFakeRate->GetNbinsX();i++){
+      hFakeRate->SetBinContent(i,hFakeRate->GetBinContent(i)+1e-10);
+      if (hFakeRate->GetBinContent(i)==0) {
+         hFakeRate->SetBinError(i,0);}
+	 
+   }
+
+   hFakeRate->SetAxisRange(0,0.5,"Y");
    hFakeRate->Draw();
    hFakeRate->SetXTitle(Form("R=%.1f Jet p_{T} (GeV/c)",cone*0.1));
    hFakeRate->SetYTitle("Fake Rate");
    hFakeRate->SetTitle(Form("%d-%d%%",centL,centH));
+   c2->SaveAs(Form("results/fakeRate_%d_bin%d.pdf",cone,centBin));
+   c2->SaveAs(Form("results/fakeRate_%d_bin%d.root",cone,centBin));
+}
+
+void doAll()
+{
+   for (int i=1;i<=4;i++) {
+      plotFakeRate(3,i);
+      plotFakeRate(4,i);
+      plotFakeRate(6,i);
+      plotFakeRate(8,i);
+      plotFakeRate(10,i);
+   }
 }
