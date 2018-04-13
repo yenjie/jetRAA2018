@@ -5,13 +5,13 @@
 
 #include "commonTool.h"
 
-class ForestTrees
+class ForestTreesMatch
 {
    public:
    TFile *inf;
    TTree *Jet;
    TTree *Evt;
-   ForestTrees(const char *infname, int cone){
+   ForestTreesMatch(const char *infname, int cone){
       inf = new TFile(infname);
       char *treeName = Form("akCs%dPU3PFFlowJetAnalyzer/t",cone);
       Jet = (TTree*) inf->Get(treeName);
@@ -22,8 +22,8 @@ class ForestTrees
 
 void genMatching(Int_t cone=3)
 {
-   ForestTrees fMB("LargeConeRAA_20180218/HiForestAOD_PbPb_MB_20180218_ExcludeTop4_ExcludeToFrac_Frac0p7_Full_5Sigma_MERGED.root",cone);
-
+   ForestTreesMatch fMB("/data/cmcginn/Forests/Pythia6Dijet/LargeConeRAA_20180218/HiForestAOD_PbPb_MB_20180218_ExcludeTop4_ExcludeToFrac_Frac0p7_Full_5Sigma_MERGED.root",cone);
+      
    Int_t nref, ngen;
    Float_t jtpt[100];
    Float_t jteta[100];
@@ -63,13 +63,13 @@ void genMatching(Int_t cone=3)
    dRcut/=10;
    for (int i=0;i<fMB.Jet->GetEntries();i++) {
       fMB.Jet->GetEntry(i);
-      if (i%1000==0) cout <<i<<" / "<<fMB.Jet->GetEntries()<<endl;
+      if (i%100000==0) cout <<i<<" / "<<fMB.Jet->GetEntries()<<endl;
       for (int j=0;j<nref;j++) {
          jtgenref[j]=-1;
 	 jtDR[j]=-1;
          for (int k=0;k<ngen;k++) {
 	    double dR=deltaR(jteta[j],jtphi[j],geneta[k],genphi[k]);
-	    if (dR<dRcut&&genpt[k]>80) {
+	    if (dR<dRcut&&genpt[k]>50) {
 	       jtgenref[j]=k;
 	       jtDR[j]=dR;
 	       break;   
@@ -79,5 +79,5 @@ void genMatching(Int_t cone=3)
       t->Fill();
    }
    t->Write();
-   //outf->Close();   
+   outf->Close();   
 }

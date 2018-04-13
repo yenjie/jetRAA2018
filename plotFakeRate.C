@@ -5,6 +5,7 @@
 #include <TCut.h>
 #include <TLatex.h>
 #include "ncollFunction.h"
+#include "/afs/cern.ch/user/s/skanaski/jet_stuff/SKDetector/CustomCanvas.h"
 
 // for PYTHIA+HYDJET, use the following pthat weights: PTHATWEIGHTS=1., 0.00555693, 0.000213668, .0000107919
 //for PYTHIA, use the following pthat weights: PTHATWEIGHTS=1.,0.0130479,0.00032629,0.000049913
@@ -25,21 +26,21 @@
 // centBin=4 50-90% 0.543*0.4*7745*0.03378 / (7745*0.4) = 0.0183
 // centBin=5 0-100% 208*208*0.3378 / (7745) = 0.189
 
-class ForestTrees
+class ForestTreesPlot
 {
    public:
    TFile *inf;
    TTree *Jet;
    TTree *match;
    TTree *Evt;
-   ForestTrees(const char *infname, int cone, bool isMB=0){
+   ForestTreesPlot(const char *infname, int cone, bool isMB=0){
       inf = new TFile(infname);
       char *treeName = Form("akCs%dPU3PFFlowJetAnalyzer/t",cone);
       Jet = (TTree*) inf->Get(treeName);
       Evt = (TTree*) inf->Get("hiEvtAnalyzer/HiTree");
       Jet->AddFriend(Evt);
       if (isMB==1) {
-          TFile *inf2 = new TFile(Form("/data/yjlee/jetRAA2018/outfile_%d.root",cone));
+          TFile *inf2 = new TFile(Form("~/jet_stuff/jetRAA2018/outfile_%d.root",cone));
 	  TTree *matchingTree = (TTree*) inf2->Get(Form("t%d",cone));
 	  Jet->AddFriend(matchingTree);
       }
@@ -64,13 +65,13 @@ TH1D *myHistogram(const char *hname, int centBin=1)
   return h;
 }
 
-void plotFakeRate(int cone=10, int centBin=1)
+void plotFakeRate(int cone=10, int centBin=1, CustomCanvas* c2=0)
 {
-   ForestTrees fMB("LargeConeRAA_20180218/HiForestAOD_PbPb_MB_20180218_ExcludeTop4_ExcludeToFrac_Frac0p7_Full_5Sigma_MERGED.root",cone,1);
-   ForestTrees f30("LargeConeRAA_20180218/HiForestAOD_PbPb_MCDijet30_20180218_ExcludeTop4_ExcludeToFrac_Frac0p7_Full_5Sigma_MERGED.root",cone);
-   ForestTrees f80("LargeConeRAA_20180218/HiForestAOD_PbPb_MCDijet80_20180218_ExcludeTop4_ExcludeToFrac_Frac0p7_Full_5Sigma_MERGED.root",cone);
-   ForestTrees f170("LargeConeRAA_20180218/HiForestAOD_PbPb_MCDijet170_20180218_ExcludeTop4_ExcludeToFrac_Frac0p7_Full_5Sigma_MERGED.root",cone);
-   ForestTrees f280("LargeConeRAA_20180218/HiForestAOD_PbPb_MCDijet280_20180218_ExcludeTop4_ExcludeToFrac_Frac0p7_Full_5Sigma_MERGED.root",cone);
+   ForestTreesPlot fMB("/data/cmcginn/Forests/Pythia6Dijet/LargeConeRAA_20180218/HiForestAOD_PbPb_MB_20180218_ExcludeTop4_ExcludeToFrac_Frac0p7_Full_5Sigma_MERGED.root",cone,1);
+   ForestTreesPlot f30("/data/cmcginn/Forests/Pythia6Dijet/LargeConeRAA_20180218/HiForestAOD_PbPb_MCDijet30_20180218_ExcludeTop4_ExcludeToFrac_Frac0p7_Full_5Sigma_MERGED.root",cone);
+   ForestTreesPlot f80("/data/cmcginn/Forests/Pythia6Dijet/LargeConeRAA_20180218/HiForestAOD_PbPb_MCDijet80_20180218_ExcludeTop4_ExcludeToFrac_Frac0p7_Full_5Sigma_MERGED.root",cone);
+   ForestTreesPlot f170("/data/cmcginn/Forests/Pythia6Dijet/LargeConeRAA_20180218/HiForestAOD_PbPb_MCDijet170_20180218_ExcludeTop4_ExcludeToFrac_Frac0p7_Full_5Sigma_MERGED.root",cone);
+   ForestTreesPlot f280("/data/cmcginn/Forests/Pythia6Dijet/LargeConeRAA_20180218/HiForestAOD_PbPb_MCDijet280_20180218_ExcludeTop4_ExcludeToFrac_Frac0p7_Full_5Sigma_MERGED.root",cone);
         
    TCanvas *c = new TCanvas("c","",600,600);
    c->SetLogy();
@@ -149,7 +150,8 @@ void plotFakeRate(int cone=10, int centBin=1)
    hFake->SetMarkerColor(2);
    hFake->Draw("same");
  
-   TCanvas *c2 = new TCanvas("c2","Fake Rate",600,600);
+   if (c2==0) c2 = new CustomCanvas("c2","Fake Rate",600,600);
+   c2->cd();
    c2->SetLogx();
    TH1D *hFakeRate = (TH1D*)hFake->Clone("hFakeRate");
    TH1D *hAll = (TH1D*)h30->Clone("hAll");
@@ -169,23 +171,26 @@ void plotFakeRate(int cone=10, int centBin=1)
    hFakeRate->Draw("hist same");
    hFakeRate->SetXTitle(Form("R=%.1f Jet p_{T} (GeV/c)",cone*0.1));
    hFakeRate->SetYTitle("Fake Rate");
-   hFakeRate->SetTitle(Form("%d-%d%%",centL,centH));
+   hFakeRate->SetTitle(Form("Cone size %.1f, %d-%d%%",cone*0.1,centL,centH));
 
    TLatex* latex4 = new TLatex(180,-0.048,"2#times 10^{2}");
    latex4->SetTextFont(42);
    latex4->SetTextSize(0.045);
    latex4->Draw();
-   c2->SaveAs(Form("results/fakeRate_%d_bin%d.pdf",cone,centBin));
-   c2->SaveAs(Form("results/fakeRate_%d_bin%d.root",cone,centBin));
+   c2->SaveAs(Form("fakeRate_%d_bin%d.png",cone,centBin));
+   //c2->SaveAs(Form("results/fakeRate_%d_bin%d.pdf",cone,centBin));
+   //c2->SaveAs(Form("results/fakeRate_%d_bin%d.root",cone,centBin));
+
+   delete c;
 }
 
-void doAll()
+void doAll(CustomCanvas* c2=0)
 {
-   for (int i=1;i<=4;i++) {
-      plotFakeRate(3,i);
-      plotFakeRate(4,i);
-      plotFakeRate(6,i);
-      plotFakeRate(8,i);
-      plotFakeRate(10,i);
-   }
+  std::vector<int>radii={3,4,6,8,10};
+  for (int r : radii){
+    std::cout<<"Cone Size "<<r*0.1<<std::endl;
+    for (int i=1;i<=4;i++) {
+      plotFakeRate(r,i,c2);
+    }
+  }
 }
